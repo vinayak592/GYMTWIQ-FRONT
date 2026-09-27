@@ -479,6 +479,18 @@ export const api = {
   },
 
   // Permanent Gym QR Identity & Check-In
+  resolveQr: (token: string): Promise<{
+    gymId: string;
+    gymName: string;
+    city: string;
+    address: string;
+    dailyRate: number;
+    requiredCoins: number;
+    qrId: string;
+    publicQrToken: string;
+  }> =>
+    apiClient.get("/checkins/resolve-qr", { params: { token } }).then((res) => res.data.data),
+
   processQrCheckin: (qrToken: string, idempotencyKey: string, accessMode = "FULL_GYM", activityIds?: string[]) =>
     apiClient.post("/checkins/qr", { qrToken, idempotencyKey, accessMode, activityIds }).then((res) => res.data),
 

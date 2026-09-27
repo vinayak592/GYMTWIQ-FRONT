@@ -9,6 +9,7 @@ import { GlassCard, SectionCard, CoinCard, GymCard, ProductCard } from "../../co
 import { PrimaryButton, SecondaryButton, StatusBadge } from "../../components/ui/Buttons";
 import { LoadingSkeleton, EmptyState, ErrorState } from "../../components/ui/States";
 import { loadRazorpayScript } from "../../utils/razorpay";
+import { QrScannerModal } from "../../components/qr/QrScannerModal";
 import {
   Dumbbell, QrCode, MapPin, Sparkles, Flame, ShoppingBag,
   Coins, Check, ChevronRight, Activity, Calendar, Clock,
@@ -122,12 +123,9 @@ export const MemberDashboard: React.FC = () => {
   }, [selectedCity]);
 
   // Handle QR Checkin execution
-  const handleCheckIn = async (gym: Gym) => {
-    setSelectedGymForCheckin(gym);
+  const handleCheckIn = (gym?: Gym | null) => {
+    setSelectedGymForCheckin(gym || null);
     setCheckinModalOpen(true);
-    setCheckinResult(null);
-    setCheckinError(null);
-    setQrTokenInput("");
   };
 
   const handleRedeemProduct = async (product: Product) => {
@@ -137,31 +135,6 @@ export const MemberDashboard: React.FC = () => {
       fetchData();
     } catch (err: any) {
       alert(err.message || "Failed to redeem product");
-    }
-  };
-
-  const confirmCheckIn = async () => {
-    setCheckingIn(true);
-    setCheckinError(null);
-    try {
-      const idempotencyKey = `chk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      let targetToken = qrTokenInput.trim();
-      if (!targetToken && selectedGymForCheckin) {
-        targetToken = selectedGymForCheckin.id;
-      }
-      if (!targetToken) {
-        setCheckinError("Please scan or enter a gym QR token.");
-        setCheckingIn(false);
-        return;
-      }
-
-      const res = await api.processQrCheckin(targetToken, idempotencyKey, "FULL_GYM");
-      setCheckinResult(res);
-      fetchData(); // Refresh coins & checkins live data
-    } catch (err: any) {
-      setCheckinError(err.message || "Check-in failed");
-    } finally {
-      setCheckingIn(false);
     }
   };
 
@@ -251,11 +224,11 @@ export const MemberDashboard: React.FC = () => {
       <SectionCard title="Quick Actions" icon={<Zap className="w-4 h-4" />}>
         <div className="grid grid-cols-2 gap-2.5">
           <button
-            onClick={() => gyms.length > 0 && handleCheckIn(gyms[0])}
+            onClick={() => handleCheckIn(null)}
             className="p-3 rounded-xl bg-gymSurface hover:bg-gymCardElevated border border-gymBorder hover:border-gymOrange/40 flex flex-col items-center justify-center gap-1.5 transition-all group text-center"
           >
             <QrCode className="w-5 h-5 text-gymOrange group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-semibold text-gymTextPrimary">Check-In</span>
+            <span className="text-xs font-semibold text-gymTextPrimary">Scan QR Pass</span>
           </button>
           <button
             onClick={() => setActiveSubTab("trainers")}
@@ -310,13 +283,19 @@ export const MemberDashboard: React.FC = () => {
               <p className="text-xs sm:text-sm text-gymTextSecondary leading-relaxed">
                 Every Workout Brings You Closer to a Stronger You. Explore gyms, check-in, earn coins, and redeem rewards.
               </p>
-              <div className="pt-2 flex items-center gap-3">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <PrimaryButton
+                  icon={<QrCode className="w-4 h-4" />}
+                  onClick={() => handleCheckIn(null)}
+                >
+                  Scan Gym QR Pass
+                </PrimaryButton>
+                <SecondaryButton
                   icon={<Compass className="w-4 h-4" />}
                   onClick={() => setActiveSubTab("discovery")}
                 >
                   Find a Gym →
-                </PrimaryButton>
+                </SecondaryButton>
               </div>
             </div>
 
@@ -725,43 +704,20 @@ export const MemberDashboard: React.FC = () => {
         </SectionCard>
       )}
 
-      {/* 5. QR Check-In Modal */}
-      {checkinModalOpen && selectedGymForCheckin && (
-        <div className="fixed inset-0 z-50 bg-gymDark/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="card-3d-featured p-6 max-w-md w-full relative">
-            <button onClick={() => setCheckinModalOpen(false)} className="absolute top-4 right-4 text-gymTextMuted hover:text-gymTextPrimary">
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-gymOrange/20 border border-gymOrange/40 text-gymOrange flex items-center justify-center mx-auto">
-                <QrCode className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-gymTextPrimary">Check In at {selectedGymForCheckin.name}</h3>
-              <p className="text-xs text-gymTextMuted">Present your dynamic QR pass at turnstile scanner or confirm instant access.</p>
-
-              {checkinError && (
-                <div className="p-3 rounded-xl bg-gymError/15 border border-gymError/30 text-gymError text-xs">
-                  {checkinError}
-                </div>
-              )}
-
-              {checkinResult ? (
-                <div className="p-4 rounded-2xl bg-gymSuccess/15 border border-gymSuccess/30 text-gymSuccess space-y-2">
-                  <CheckCircle2 className="w-8 h-8 mx-auto" />
-                  <h4 className="font-bold text-sm">Check-In Successful!</h4>
-                  <p className="text-xs text-gymTextPrimary">Enjoy your workout at {selectedGymForCheckin.name}.</p>
-                  <PrimaryButton fullWidth onClick={() => setCheckinModalOpen(false)}>Done</PrimaryButton>
-                </div>
-              ) : (
-                <PrimaryButton fullWidth isLoading={checkingIn} onClick={confirmCheckIn}>
-                  Confirm QR Check-In
-                </PrimaryButton>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 5. Modern Real-Time QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={checkinModalOpen}
+        onClose={() => {
+          setCheckinModalOpen(false);
+          setSelectedGymForCheckin(null);
+        }}
+        presetGym={selectedGymForCheckin}
+        availableGyms={gyms}
+        userCoins={coins?.coinBalance ?? 0}
+        onCheckInSuccess={(res) => {
+          fetchData();
+        }}
+      />
 
       {/* 6. Coins Top-Up Modal */}
       {coinModalOpen && (
