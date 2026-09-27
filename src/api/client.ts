@@ -22,6 +22,12 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+    if (config.headers && typeof (config.headers as any).delete === "function") {
+      (config.headers as any).delete("Content-Type");
+    }
+  }
   const token = localStorage.getItem("gymtwiq_access_token") || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

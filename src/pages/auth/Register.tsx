@@ -123,6 +123,7 @@ export const Register: React.FC = () => {
       try {
         const formData = new FormData();
         formData.append("accountType", "OWNER");
+        formData.append("role", "owner");
         formData.append("name", name.trim());
         formData.append("email", email.trim());
         formData.append("phone", phone.trim());

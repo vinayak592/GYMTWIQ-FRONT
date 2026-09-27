@@ -409,17 +409,13 @@ export const api = {
 
   // Owner Verification & Onboarding
   registerOwner: (formData: FormData) =>
-    apiClient.post("/auth/register", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    }).then((res) => res.data),
+    apiClient.post("/auth/register", formData).then((res) => res.data),
 
   getOwnerVerificationStatus: (): Promise<any> =>
     apiClient.get("/owner/verification-status").then((res) => res.data.data),
 
   resubmitOwnerVerification: (formData: FormData): Promise<any> =>
-    apiClient.post("/owner/verification-resubmit", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    }).then((res) => res.data.data),
+    apiClient.post("/owner/verification-resubmit", formData).then((res) => res.data.data),
 
   getSupportedLicenseTypes: (): Promise<string[]> =>
     apiClient.get("/gyms/license-types").then((res) => res.data.data),
