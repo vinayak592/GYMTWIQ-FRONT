@@ -11,7 +11,7 @@ import {
   Dumbbell, ShieldCheck, Users, Activity, PieChart, CreditCard, Plus,
   UserCheck, AlertTriangle, FileText, CheckCircle2, X, RefreshCw, Calendar, Settings, MapPin,
   Camera, Image, ListPlus, Save, Trash2, Clock, QrCode, Printer, Maximize2, Download, Copy,
-  Coins, Edit2, Check
+  Coins, Edit2, Check, Upload
 } from "lucide-react";
 import { Gym, TrainerProfile, GymActivity, PaymentRecord, GymEquipmentItem, GymQRCode, GymVisitAnalytics } from "../../types";
 
@@ -251,8 +251,82 @@ export const OwnerDashboard: React.FC = () => {
     setGymEquipments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Helper to read and compress image file to Base64
+  const processImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith("image/")) {
+        reject(new Error("Selected file must be an image (JPEG, PNG, WebP)."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          // Scale down if larger than 1200px for fast loading & compact storage
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+            resolve(dataUrl);
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processImageFile(file);
+      setGymCoverImage(dataUrl);
+    } catch (err: any) {
+      alert(err.message || "Failed to process selected image.");
+    }
+  };
+
+  const handleInnerFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const dataUrl = await processImageFile(files[i]);
+        urls.push(dataUrl);
+      }
+      setGymInnerImages((prev) => [...prev, ...urls]);
+    } catch (err: any) {
+      alert(err.message || "Failed to process selected images.");
+    }
+  };
+
   const handleAddInnerImage = () => {
     if (!newInnerImage || !newInnerImage.trim()) return;
+    if (newInnerImage.includes(":\\") || newInnerImage.startsWith("file://")) {
+      alert("Local file paths (e.g. C:\\...) cannot be loaded by browsers. Please use the 'Upload from Computer' button instead.");
+      return;
+    }
     setGymInnerImages((prev) => [...prev, newInnerImage.trim()]);
     setNewInnerImage("");
   };
@@ -626,25 +700,87 @@ export const OwnerDashboard: React.FC = () => {
                 <h4 className="text-xs font-bold text-gymTextMuted uppercase tracking-wider flex items-center gap-2">
                   <Camera className="w-4 h-4 text-gymOrange" /> Main Gym Cover Photo
                 </h4>
+                {gymCoverImage && (
+                  <button
+                    type="button"
+                    onClick={() => setGymCoverImage("")}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Clear Photo
+                  </button>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                <div className="md:col-span-8 space-y-2">
-                  <label className="text-xs font-semibold text-gymTextMuted block">Cover Image URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://example.com/gym-cover.jpg"
-                    value={gymCoverImage}
-                    onChange={(e) => setGymCoverImage(e.target.value)}
-                    className="w-full px-3 py-2 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange"
-                  />
-                  <p className="text-[11px] text-gymTextMuted">Primary banner photo shown on public discovery and user dashboards.</p>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                <div className="md:col-span-8 space-y-3">
+                  {/* File Upload Option */}
+                  <div>
+                    <label className="text-xs font-semibold text-gymTextPrimary block mb-1">
+                      Choose Photo from Your Computer
+                    </label>
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gymOrange hover:bg-gymOrange/90 text-white text-xs font-bold rounded-xl cursor-pointer shadow-lg shadow-gymOrange/20 transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>Choose File from Computer</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        onChange={handleCoverFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[11px] text-gymTextMuted mt-1">
+                      Upload any image (JPG, PNG, WebP). It will be optimized and saved automatically.
+                    </p>
+                  </div>
+
+                  {/* URL Input Option */}
+                  <div className="pt-2 border-t border-gymBorder/60 space-y-1.5">
+                    <label className="text-xs font-semibold text-gymTextMuted block">
+                      Or paste an online web image URL:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      value={gymCoverImage.startsWith("data:") ? "Image loaded from computer" : gymCoverImage}
+                      disabled={gymCoverImage.startsWith("data:")}
+                      onChange={(e) => setGymCoverImage(e.target.value)}
+                      className="w-full px-3 py-2 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange disabled:opacity-75 disabled:text-emerald-400"
+                    />
+
+                    {/* Warning if user typed a local Windows file path */}
+                    {(gymCoverImage.includes(":\\") || gymCoverImage.startsWith("file://")) && (
+                      <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                        <span>
+                          <strong>Local File Path Detected:</strong> Web browsers cannot read files from <code className="bg-black/40 px-1 rounded text-amber-200">C:\...</code> directly. Please click the orange <strong>"Choose File from Computer"</strong> button above to upload this image!
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="md:col-span-4 h-32 rounded-xl bg-gymDark border border-gymBorder overflow-hidden relative flex items-center justify-center">
-                  {gymCoverImage ? (
-                    <img src={gymCoverImage} alt="Gym Cover Preview" className="w-full h-full object-cover" />
+
+                {/* Preview Box */}
+                <div className="md:col-span-4 h-40 rounded-xl bg-gymDark border border-gymBorder overflow-hidden relative flex flex-col items-center justify-center">
+                  {gymCoverImage && !gymCoverImage.includes(":\\") && !gymCoverImage.startsWith("file://") ? (
+                    <>
+                      <img
+                        src={gymCoverImage}
+                        alt="Gym Cover Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                      <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] text-emerald-400 font-mono">
+                        Ready to Save
+                      </span>
+                    </>
                   ) : (
-                    <div className="text-center text-gymTextMuted text-xs p-2">No cover image URL</div>
+                    <div className="text-center p-3 space-y-1">
+                      <Camera className="w-6 h-6 text-gymTextMuted mx-auto opacity-40" />
+                      <div className="text-gymTextMuted text-xs">No valid cover image</div>
+                      <div className="text-[10px] text-gymTextMuted/70">Click Choose File to pick an image</div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -659,17 +795,31 @@ export const OwnerDashboard: React.FC = () => {
                 <span className="text-[11px] text-gymTextMuted">({gymInnerImages.length} uploaded)</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="url"
-                  placeholder="Paste inner view image URL..."
-                  value={newInnerImage}
-                  onChange={(e) => setNewInnerImage(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange"
-                />
-                <SecondaryButton type="button" icon={<Plus className="w-4 h-4" />} onClick={handleAddInnerImage}>
-                  Add Photo
-                </SecondaryButton>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-gymDark hover:bg-[#232826] border border-gymBorder hover:border-gymOrange text-white text-xs font-bold rounded-xl cursor-pointer transition-all">
+                  <Upload className="w-3.5 h-3.5 text-gymOrange" />
+                  <span>Upload Photos from Computer</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleInnerFilesUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                <div className="flex-1 min-w-[200px] flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Or paste online image URL..."
+                    value={newInnerImage}
+                    onChange={(e) => setNewInnerImage(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange"
+                  />
+                  <SecondaryButton type="button" icon={<Plus className="w-4 h-4" />} onClick={handleAddInnerImage}>
+                    Add URL
+                  </SecondaryButton>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-2">
@@ -688,7 +838,7 @@ export const OwnerDashboard: React.FC = () => {
                 ))}
                 {gymInnerImages.length === 0 && (
                   <div className="col-span-full p-6 text-center text-gymTextMuted text-xs bg-gymDark rounded-xl border border-gymBorder/60">
-                    No inner view photos added yet. Add image URLs above to show your gym facility interior to members.
+                    No inner view photos added yet. Click <strong>Upload Photos from Computer</strong> above to add gym equipment and facility interior photos.
                   </div>
                 )}
               </div>
