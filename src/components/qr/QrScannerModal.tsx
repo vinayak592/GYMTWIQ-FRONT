@@ -68,10 +68,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
       setCameraError(null);
       setManualToken("");
 
-      if (presetGym) {
-        // If gym was preset from card click, resolve its ID directly from DB
-        handleResolve(presetGym.id);
-      }
+      // Do not auto-resolve preset gym; require user to scan turnstile QR or enter code
     } else {
       stopCamera();
     }
@@ -240,6 +237,14 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Selected Facility Guidance */}
+        {presetGym && !resolvedData && !checkinResult && (
+          <div className="p-3 rounded-xl bg-gymOrange/10 border border-gymOrange/30 text-gymOrange text-xs flex items-center gap-2">
+            <Building2 className="w-4 h-4 shrink-0" />
+            <span>Checking in at <strong>{presetGym.name}</strong> ({presetGym.city}). Scan the turnstile QR code at this facility or enter the gym code below.</span>
+          </div>
+        )}
 
         {/* SUCCESS STATE */}
         {checkinResult ? (
@@ -477,27 +482,6 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
                 >
                   Verify QR Code
                 </PrimaryButton>
-              </div>
-            )}
-
-            {/* QUICK TEST SELECTOR (Available Gyms) */}
-            {availableGyms.length > 0 && (
-              <div className="pt-2 border-t border-gymBorder/40">
-                <span className="text-[11px] text-gymTextMuted block mb-2">
-                  Or select a registered gym to verify & check in:
-                </span>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                  {availableGyms.slice(0, 6).map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => handleResolve(g.id)}
-                      className="py-1 px-2.5 rounded-lg bg-gymSurface hover:bg-gymCard border border-gymBorder text-[11px] text-gymTextSecondary hover:text-gymOrange flex items-center gap-1 transition-all"
-                    >
-                      <Building2 className="w-3 h-3 text-gymOrange" />
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 

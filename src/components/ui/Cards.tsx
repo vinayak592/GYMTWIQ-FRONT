@@ -92,7 +92,7 @@ export const GymCard: React.FC<{
       <div>
         <div className="h-32 rounded-xl bg-gymSurface relative overflow-hidden mb-3 border border-gymBorder">
           <img
-            src={`https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80`}
+            src={gym.coverImage || (gym.images && gym.images[0]) || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80"}
             alt={gym.name}
             className="w-full h-full object-cover opacity-80 hover:scale-105 transition-transform duration-500"
           />
