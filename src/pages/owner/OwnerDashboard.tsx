@@ -454,7 +454,7 @@ export const OwnerDashboard: React.FC = () => {
       )}
 
       {/* PERMANENT GYMTwiq QR IDENTITY & VISIT ANALYTICS SECTION */}
-      {(activeTab === "dashboard" || activeTab === "qr") && qrDoc && (
+      {(activeTab === "dashboard" || activeTab === "qr" || activeTab === "pricing") && qrDoc && (
         <div className="p-6 rounded-2xl bg-gymSurface border border-gymBorder space-y-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-gymBorder">
             <div className="space-y-1">
