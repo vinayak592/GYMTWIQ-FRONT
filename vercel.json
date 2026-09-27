@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://gymtwiq.onrender.com/api/$1"
+      "destination": "https://gymtwiq-backend.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
