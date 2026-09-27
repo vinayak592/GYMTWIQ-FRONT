@@ -986,14 +986,15 @@ export const AdminConsole: React.FC = () => {
                         <th className="p-3">Active QR ID</th>
                         <th className="p-3 text-center">Total Visits</th>
                         <th className="p-3 text-center">Unique Members</th>
-                        <th className="p-3 text-center">Coins Consumed</th>
-                        <th className="p-3 text-right">Net Payout (INR)</th>
+                        <th className="p-3 text-center">Coins Deducted</th>
+                        <th className="p-3 text-right">Owner Payout</th>
+                        <th className="p-3 text-right">Admin Profit (+20%)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gymBorder/60 text-gymTextPrimary">
                       {gymAnalyticsList.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="p-6 text-center text-gymTextMuted">No partner gym analytics data available.</td>
+                          <td colSpan={8} className="p-6 text-center text-gymTextMuted">No partner gym analytics data available.</td>
                         </tr>
                       ) : (
                         gymAnalyticsList.map((ana) => (
@@ -1005,6 +1006,9 @@ export const AdminConsole: React.FC = () => {
                             <td className="p-3 text-center font-bold text-gymOrange">{ana.uniqueMembers}</td>
                             <td className="p-3 text-center font-mono text-amber-400">🪙 {ana.totalCoinsConsumed}</td>
                             <td className="p-3 text-right font-bold text-gymSuccess">₹{ana.totalPayoutAmount.toFixed(2)}</td>
+                            <td className="p-3 text-right font-mono font-bold text-gymOrange">
+                              +₹{(ana.totalPayoutAmount * 0.20).toFixed(2)}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1041,10 +1045,10 @@ export const AdminConsole: React.FC = () => {
                         <th className="p-3">Ledger ID / Check-in ID</th>
                         <th className="p-3">Gym ID</th>
                         <th className="p-3">Member ID</th>
-                        <th className="p-3 font-mono">Coins</th>
-                        <th className="p-3 font-mono">Metering Rate</th>
-                        <th className="p-3 font-mono">Commission</th>
-                        <th className="p-3 font-mono">Net Payout</th>
+                        <th className="p-3 font-mono">Total Deducted (User)</th>
+                        <th className="p-3 font-mono">Owner Fixed Rate</th>
+                        <th className="p-3 font-mono text-gymOrange">Platform Fee (+20%)</th>
+                        <th className="p-3 font-mono text-gymSuccess">Net Owner Payout</th>
                         <th className="p-3">Status</th>
                         <th className="p-3 text-right">Actions</th>
                       </tr>
@@ -1055,21 +1059,36 @@ export const AdminConsole: React.FC = () => {
                           <td colSpan={9} className="p-6 text-center text-gymTextMuted">No settlement ledger entries found.</td>
                         </tr>
                       ) : (
-                        settlementsList.map((s) => (
-                          <tr key={s.id || (s as any)._id} className="hover:bg-gymSurface/50 transition-colors">
-                            <td className="p-3 font-mono text-[11px]">
-                              <div className="font-bold text-gymTextPrimary">{(s.id || (s as any)._id).substring(0, 10)}...</div>
-                              <div className="text-gymTextMuted text-[10px]">Chk: {s.checkinId?.substring(0, 10)}...</div>
-                            </td>
-                            <td className="p-3 text-gymTextMuted font-mono text-[11px]">{s.gymId}</td>
-                            <td className="p-3 text-gymTextMuted font-mono text-[11px]">{s.memberId || "Member"}</td>
-                            <td className="p-3 font-mono text-amber-400 font-bold">🪙 {s.coinAmount}</td>
-                            <td className="p-3 font-mono">₹{s.walletDebit}</td>
-                            <td className="p-3 font-mono text-gymOrange">₹{s.commissionAmount} ({s.commissionPct}%)</td>
-                            <td className="p-3 font-mono font-bold text-gymSuccess">₹{s.payoutAmount}</td>
-                            <td className="p-3">
-                              <StatusBadge status={s.status} />
-                            </td>
+                        settlementsList.map((s) => {
+                          const ownerCoins = (s as any).ownerCoins || Math.round(s.payoutAmount);
+                          const platformCoins = (s as any).platformCommissionCoins || Math.round(s.commissionAmount);
+
+                          return (
+                            <tr key={s.id || (s as any)._id} className="hover:bg-gymSurface/50 transition-colors">
+                              <td className="p-3 font-mono text-[11px]">
+                                <div className="font-bold text-gymTextPrimary">{(s.id || (s as any)._id).substring(0, 10)}...</div>
+                                <div className="text-gymTextMuted text-[10px]">Chk: {s.checkinId?.substring(0, 10)}...</div>
+                              </td>
+                              <td className="p-3 text-gymTextMuted font-mono text-[11px]">{s.gymId}</td>
+                              <td className="p-3 text-gymTextMuted font-mono text-[11px]">{s.memberId || "Member"}</td>
+                              <td className="p-3 font-mono text-amber-400 font-bold">
+                                🪙 {s.coinAmount}
+                                <span className="block text-[10px] text-gymTextMuted font-normal font-sans">₹{s.walletDebit} debited</span>
+                              </td>
+                              <td className="p-3 font-mono">
+                                🪙 {ownerCoins}
+                                <span className="block text-[10px] text-gymTextMuted font-normal font-sans">₹{s.payoutAmount}</span>
+                              </td>
+                              <td className="p-3 font-mono text-gymOrange font-bold">
+                                +🪙 {platformCoins} (+20%)
+                                <span className="block text-[10px] text-gymOrange/80 font-normal font-sans">₹{s.commissionAmount}</span>
+                              </td>
+                              <td className="p-3 font-mono font-black text-gymSuccess">
+                                ₹{s.payoutAmount}
+                              </td>
+                              <td className="p-3">
+                                <StatusBadge status={s.status} />
+                              </td>
                             <td className="p-3 text-right">
                               {s.status === "PENDING" && (
                                 <button
@@ -1089,7 +1108,8 @@ export const AdminConsole: React.FC = () => {
                               )}
                             </td>
                           </tr>
-                        ))
+                        );
+                      })
                       )}
                     </tbody>
                   </table>

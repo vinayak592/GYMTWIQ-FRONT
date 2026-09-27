@@ -357,6 +357,7 @@ export interface GymActivity {
   description?: string;
   status: "ACTIVE" | "INACTIVE";
   currentPrice: number;
+  ownerCoins?: number;
   pricingId?: string | null;
   pricingVersion?: number;
   createdAt: string;

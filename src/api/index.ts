@@ -227,7 +227,7 @@ export const api = {
   getOwnerActivities: (): Promise<GymActivity[]> =>
     apiClient.get("/owner/activities").then((res) => res.data.data),
 
-  createOwnerActivity: (data: { category: string; name: string; description?: string; priceInr?: number }): Promise<GymActivity> =>
+  createOwnerActivity: (data: { category: string; name: string; description?: string; priceInr?: number; coins?: number; ownerCoins?: number }): Promise<GymActivity> =>
     apiClient.post("/owner/activities", data).then((res) => res.data.data),
 
   updateOwnerActivity: (activityId: string, data: Partial<GymActivity>): Promise<GymActivity> =>

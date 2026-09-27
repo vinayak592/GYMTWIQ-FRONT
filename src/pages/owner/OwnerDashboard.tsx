@@ -10,7 +10,8 @@ import { LoadingSkeleton, EmptyState } from "../../components/ui/States";
 import {
   Dumbbell, ShieldCheck, Users, Activity, PieChart, CreditCard, Plus,
   UserCheck, AlertTriangle, FileText, CheckCircle2, X, RefreshCw, Calendar, Settings, MapPin,
-  Camera, Image, ListPlus, Save, Trash2, Clock, QrCode, Printer, Maximize2, Download, Copy
+  Camera, Image, ListPlus, Save, Trash2, Clock, QrCode, Printer, Maximize2, Download, Copy,
+  Coins, Edit2, Check
 } from "lucide-react";
 import { Gym, TrainerProfile, GymActivity, PaymentRecord, GymEquipmentItem, GymQRCode, GymVisitAnalytics } from "../../types";
 
@@ -72,6 +73,87 @@ export const OwnerDashboard: React.FC = () => {
   const [memName, setMemName] = useState("");
   const [memEmail, setMemEmail] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+
+  // Gym Activity Pricing Manager State
+  const [actName, setActName] = useState("");
+  const [actCategory, setActCategory] = useState<"CARDIO" | "STRENGTH" | "FUNCTIONAL" | "CLASSES" | "OTHER">("STRENGTH");
+  const [actCoins, setActCoins] = useState<number | string>(100);
+  const [actDesc, setActDesc] = useState("");
+  const [creatingAct, setCreatingAct] = useState(false);
+  const [editingActId, setEditingActId] = useState<string | null>(null);
+  const [editActCoins, setEditActCoins] = useState<number | string>(100);
+  const [savingEditPrice, setSavingEditPrice] = useState(false);
+  const [actSuccessMsg, setActSuccessMsg] = useState<string | null>(null);
+  const [actErrorMsg, setActErrorMsg] = useState<string | null>(null);
+
+  const handleCreateActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actName.trim()) {
+      setActErrorMsg("Please enter an activity name");
+      return;
+    }
+    const coinsNum = Number(actCoins);
+    if (isNaN(coinsNum) || coinsNum <= 0) {
+      setActErrorMsg("Please enter a valid coin amount greater than 0");
+      return;
+    }
+
+    setCreatingAct(true);
+    setActErrorMsg(null);
+    setActSuccessMsg(null);
+    try {
+      await api.createOwnerActivity({
+        name: actName.trim(),
+        category: actCategory,
+        description: actDesc.trim(),
+        priceInr: coinsNum,
+      });
+      setActName("");
+      setActCoins(100);
+      setActDesc("");
+      setActSuccessMsg(`Activity '${actName.trim()}' successfully configured with fixed price of ${coinsNum} Coins.`);
+      const updatedActs = await api.getOwnerActivities();
+      setActivities(updatedActs);
+    } catch (err: any) {
+      setActErrorMsg(err.message || "Failed to create activity");
+    } finally {
+      setCreatingAct(false);
+    }
+  };
+
+  const handleUpdatePrice = async (activityId: string) => {
+    const coinsNum = Number(editActCoins);
+    if (isNaN(coinsNum) || coinsNum <= 0) {
+      setActErrorMsg("Please enter a valid coin amount");
+      return;
+    }
+    setSavingEditPrice(true);
+    setActErrorMsg(null);
+    setActSuccessMsg(null);
+    try {
+      await api.setActivityPrice(activityId, coinsNum);
+      setEditingActId(null);
+      setActSuccessMsg(`Fixed price updated to ${coinsNum} Coins.`);
+      const updatedActs = await api.getOwnerActivities();
+      setActivities(updatedActs);
+    } catch (err: any) {
+      setActErrorMsg(err.message || "Failed to update price");
+    } finally {
+      setSavingEditPrice(false);
+    }
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!confirm("Are you sure you want to deactivate this activity?")) return;
+    try {
+      await api.updateOwnerActivity(activityId, { status: "INACTIVE" });
+      const updatedActs = await api.getOwnerActivities();
+      setActivities(updatedActs);
+      setActSuccessMsg("Activity deactivated successfully.");
+    } catch (err: any) {
+      setActErrorMsg(err.message || "Failed to deactivate activity");
+    }
+  };
 
   const fetchOwnerData = async () => {
     setLoading(true);
@@ -813,21 +895,207 @@ export const OwnerDashboard: React.FC = () => {
 
       {/* PRICING & PLANS */}
       {activeTab === "pricing" && (
-        <SectionCard title="Gym Activity Pricing Manager" icon={<CreditCard className="w-4 h-4" />}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activities.length === 0 ? (
-              <EmptyState title="No custom activities configured" />
-            ) : (
-              activities.map((act) => (
-                <div key={act.id} className="p-4 rounded-xl bg-gymSurface border border-gymBorder space-y-2">
-                  <h4 className="text-xs font-bold text-gymTextPrimary">{act.name}</h4>
-                  <div className="text-sm font-extrabold text-gymOrange">₹{act.currentPrice} / session</div>
-                  <StatusBadge status={act.status} />
+        <div className="space-y-6">
+          {/* 1. INPUT BOX & FORM TO FIX ACTIVITY COINS */}
+          <SectionCard title="Gym Activity Pricing Manager" icon={<CreditCard className="w-4 h-4" />}>
+            <form onSubmit={handleCreateActivity} className="p-5 rounded-2xl bg-gymSurface border border-gymBorder space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-gymBorder">
+                <div>
+                  <h4 className="text-sm font-bold text-gymTextPrimary flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-amber-400" />
+                    Configure Facility Entry & Activity Coin Pricing
+                  </h4>
+                  <p className="text-xs text-gymTextMuted mt-0.5">
+                    Fix the exact coins for your gym sessions and turnstile entries. You receive 100% of this fixed rate on every check-in.
+                  </p>
                 </div>
-              ))
-            )}
-          </div>
-        </SectionCard>
+              </div>
+
+              {actSuccessMsg && (
+                <div className="p-3 rounded-xl bg-gymSuccess/15 border border-gymSuccess/30 text-gymSuccess text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{actSuccessMsg}</span>
+                </div>
+              )}
+
+              {actErrorMsg && (
+                <div className="p-3 rounded-xl bg-gymError/15 border border-gymError/30 text-gymError text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{actErrorMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div className="md:col-span-4 space-y-1.5">
+                  <label className="text-xs font-semibold text-gymTextMuted block">Activity / Session Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. General Workout / Entry, Cardio Zone, CrossFit"
+                    value={actName}
+                    onChange={(e) => setActName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange transition-all"
+                  />
+                </div>
+
+                <div className="md:col-span-3 space-y-1.5">
+                  <label className="text-xs font-semibold text-gymTextMuted block">Category *</label>
+                  <select
+                    value={actCategory}
+                    onChange={(e) => setActCategory(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 bg-gymDark border border-gymBorder rounded-xl text-xs text-gymTextPrimary outline-none focus:border-gymOrange transition-all"
+                  >
+                    <option value="STRENGTH">Strength Training</option>
+                    <option value="CARDIO">Cardio Zone</option>
+                    <option value="FUNCTIONAL">Functional / CrossFit</option>
+                    <option value="CLASSES">Studio Classes</option>
+                    <option value="OTHER">General Entry / Other</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-3 space-y-1.5">
+                  <label className="text-xs font-semibold text-gymTextMuted block">
+                    Coins Fixed by Owner *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-sm">🪙</span>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      placeholder="100"
+                      value={actCoins}
+                      onChange={(e) => setActCoins(e.target.value)}
+                      className="w-full pl-9 pr-14 py-2.5 bg-gymDark border border-amber-500/40 rounded-xl text-sm font-extrabold text-gymTextPrimary outline-none focus:border-gymOrange transition-all"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gymTextMuted text-xs font-bold">Coins</span>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <PrimaryButton
+                    type="submit"
+                    fullWidth
+                    isLoading={creatingAct}
+                    icon={<Plus className="w-4 h-4" />}
+                  >
+                    Save Activity
+                  </PrimaryButton>
+                </div>
+              </div>
+            </form>
+
+            {/* 2. CONFIGURED ACTIVITIES LIST */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-gymTextMuted uppercase tracking-wider">
+                  Configured Gym Activities ({activities.length})
+                </h4>
+                <span className="text-[11px] text-gymTextMuted">
+                  Your fixed amount is synced to the QR Turnstile Scanner.
+                </span>
+              </div>
+
+              {activities.length === 0 ? (
+                <EmptyState
+                  title="No custom activities configured"
+                  description="Use the input box above to set your first fixed coin activity (e.g. 100 Coins for General Gym Entry)."
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activities.map((act) => {
+                    const isEditing = editingActId === act.id;
+                    const fixedPrice = act.ownerCoins || act.currentPrice;
+
+                    return (
+                      <div
+                        key={act.id}
+                        className="p-5 rounded-2xl bg-gymSurface border border-gymBorder hover:border-gymOrange/50 transition-all flex flex-col justify-between space-y-4"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gymDark text-gymOrange border border-gymBorder">
+                              {act.category}
+                            </span>
+                            <StatusBadge status={act.status} />
+                          </div>
+                          <h4 className="text-sm font-extrabold text-gymTextPrimary">{act.name}</h4>
+                          {act.description && (
+                            <p className="text-xs text-gymTextMuted line-clamp-2">{act.description}</p>
+                          )}
+                        </div>
+
+                        {/* FIXED RATE BOX (ONLY SHOWS OWNER FIXED AMOUNT) */}
+                        <div className="p-3.5 rounded-xl bg-gymDark border border-gymBorder space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-gymTextMuted block">
+                            Coins Fixed by You (100% Payout)
+                          </span>
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 pt-1">
+                              <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-400 text-xs">🪙</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editActCoins}
+                                  onChange={(e) => setEditActCoins(e.target.value)}
+                                  className="w-full pl-7 pr-2 py-1.5 bg-gymSurface border border-gymOrange rounded-lg text-xs font-bold text-gymTextPrimary outline-none"
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleUpdatePrice(act.id)}
+                                disabled={savingEditPrice}
+                                className="px-2.5 py-1.5 rounded-lg bg-gymSuccess text-white text-xs font-bold hover:brightness-110 flex items-center gap-1 transition-all"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Save
+                              </button>
+                              <button
+                                onClick={() => setEditingActId(null)}
+                                className="px-2 py-1.5 rounded-lg bg-gymSurface text-gymTextMuted hover:text-gymTextPrimary text-xs transition-all"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline justify-between pt-0.5">
+                              <span className="text-xl font-black text-amber-400 flex items-center gap-1.5">
+                                <span>🪙</span> {fixedPrice} <span className="text-xs font-bold text-gymTextMuted">Coins</span>
+                              </span>
+                              <span className="text-xs font-mono font-bold text-gymSuccess">₹{fixedPrice} / session</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ACTIONS */}
+                        <div className="flex items-center justify-between pt-1 border-t border-gymBorder/40 text-xs">
+                          {!isEditing && (
+                            <button
+                              onClick={() => {
+                                setEditingActId(act.id);
+                                setEditActCoins(fixedPrice);
+                              }}
+                              className="text-gymOrange hover:text-gymOrange/80 font-bold flex items-center gap-1 transition-all"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" /> Edit Coins
+                            </button>
+                          )}
+                          {act.status === "ACTIVE" && (
+                            <button
+                              onClick={() => handleDeleteActivity(act.id)}
+                              className="text-gymTextMuted hover:text-red-400 ml-auto flex items-center gap-1 transition-all text-[11px]"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Deactivate
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
       )}
 
       {/* VERIFICATION STATUS */}
@@ -848,15 +1116,18 @@ export const OwnerDashboard: React.FC = () => {
       {/* PAYOUT LEDGER */}
       {activeTab === "payouts" && (
         <SectionCard title="Footfall Revenue & Payout Ledger" icon={<PieChart className="w-4 h-4" />}>
-          <div className="p-4 rounded-xl bg-gymSurface border border-gymBorder text-xs space-y-2">
-            <div className="flex justify-between">
+          <div className="p-4 rounded-xl bg-gymSurface border border-gymBorder text-xs space-y-3">
+            <div className="flex justify-between items-center pb-2 border-b border-gymBorder">
               <span className="text-gymTextMuted">Settlement Cycle:</span>
               <span className="font-semibold text-gymTextPrimary">Weekly T+2</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gymTextMuted">Platform Commission Deducted:</span>
-              <span className="font-semibold text-gymOrange">18.0%</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gymTextMuted">Your Payout Rate:</span>
+              <span className="font-bold text-gymSuccess">100% of Fixed Activity Rate</span>
             </div>
+            <p className="text-[11px] text-gymTextMuted pt-1">
+              All member check-ins are credited directly to your payout ledger at the exact coin rate you set with zero deductions.
+            </p>
           </div>
         </SectionCard>
       )}

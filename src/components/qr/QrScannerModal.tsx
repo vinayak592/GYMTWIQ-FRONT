@@ -320,12 +320,14 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gymBorder/40">
                 <div className="p-2.5 rounded-xl bg-gymCard border border-gymBorder/60">
-                  <span className="text-[10px] text-gymTextMuted block">Daily Pricing</span>
-                  <span className="text-base font-bold text-gymOrange">₹{resolvedData.dailyRate}</span>
+                  <span className="text-[10px] text-gymTextMuted block">Entry Pass</span>
+                  <span className="text-xs font-bold text-gymTextPrimary truncate block">
+                    {(resolvedData as any).activityName || "Turnstile Access"}
+                  </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-gymCard border border-gymBorder/60">
-                  <span className="text-[10px] text-gymTextMuted block">Required Coins</span>
-                  <span className="text-base font-bold text-gymTextPrimary flex items-center gap-1">
+                  <span className="text-[10px] text-gymTextMuted block">Required Entry Coins</span>
+                  <span className="text-base font-extrabold text-amber-400 flex items-center gap-1">
                     🪙 {resolvedData.requiredCoins}
                   </span>
                 </div>
@@ -361,7 +363,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
                 isLoading={submitting}
                 onClick={handleConfirmCheckin}
               >
-                Confirm Check-In
+                Confirm & Enter (🪙 {resolvedData.requiredCoins} Coins)
               </PrimaryButton>
             </div>
           </div>
